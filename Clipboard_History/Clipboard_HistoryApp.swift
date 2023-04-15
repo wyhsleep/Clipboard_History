@@ -28,15 +28,15 @@ struct Clipboard_HistoryApp: App {
             ContentView()
         }
         .commands {
-            CommandMenu("Clipboard_History") {
-                Button(action: {
-                    let menuManager = MenuManager()
-                    menuManager.showSettings(nil)
-                }) {
-                    Text("Settings")
+                    CommandGroup(after: .appInfo) {
+                        Button(action: {
+                            let menuManager = MenuManager()
+                            menuManager.showSettings(nil)
+                        }) {
+                            Text("Settings")
+                        }
+                    }
                 }
-            }
-        }
     }
 }
 
