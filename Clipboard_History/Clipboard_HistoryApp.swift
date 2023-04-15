@@ -6,6 +6,20 @@
 //
 
 import SwiftUI
+import AppKit
+
+class MenuManager: NSObject {
+    @objc func showSettings(_ sender: NSMenuItem?) {
+        let settingsWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 300), styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        settingsWindow.center()
+        settingsWindow.setFrameAutosaveName("Settings")
+        settingsWindow.isReleasedWhenClosed = false
+        settingsWindow.contentView = NSHostingView(rootView: SettingsView())
+        settingsWindow.makeKeyAndOrderFront(nil)
+    }
+}
+
+
 
 @main
 struct Clipboard_HistoryApp: App {
@@ -13,5 +27,17 @@ struct Clipboard_HistoryApp: App {
         WindowGroup {
             ContentView()
         }
+        .commands {
+            CommandMenu("Clipboard_History") {
+                Button(action: {
+                    let menuManager = MenuManager()
+                    menuManager.showSettings(nil)
+                }) {
+                    Text("Settings")
+                }
+            }
+        }
     }
 }
+
+
