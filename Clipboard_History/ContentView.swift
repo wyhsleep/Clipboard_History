@@ -135,6 +135,14 @@ struct SearchBar: NSViewRepresentable {
     }
 }
 
+struct SeparatorWidthPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
 
 
 // ContentView: Main view of the app
@@ -230,10 +238,16 @@ struct ContentView: View {
                                 Spacer()
                                 Text("----------\(dateString)----------")
                                     .font(.system(.headline, design: .monospaced))
-                                Spacer()
+                                                .padding(.horizontal, 0)
+                                                .background(GeometryReader { geometry in
+                                                    Color.clear
+                                                        .preference(key: SeparatorWidthPreferenceKey.self, value: geometry.size.width)
+                                                })
+                                            Spacer()
                             }
                             .padding(.vertical, 4)
-                            
+                            .onPreferenceChange(SeparatorWidthPreferenceKey.self) {separatorWidth in
+                            }
                             ForEach(groupedClipboardItems[dateString]!, id: \.id) { item in
                                 VStack(alignment: .leading) {
                                     // Your existing Text views for content and timestamp
@@ -259,7 +273,7 @@ struct ContentView: View {
                                                         .foregroundColor(.gray)
 
                                                     // Show More/Show Less button for long text
-                                                    if item.text.count > 50 {
+                                                    if item.text.count > 100 {
                                                         Button(action: {
                                                             clipboardHistoryManager.toggleFolded(item: item)
                                                         }) {
@@ -327,6 +341,7 @@ struct ContentView: View {
                                     }
                                 }
                             }
+                        .onAppear(perform: setup)
                         }
     // Set up clipboard monitoring and update clipboard history
     func setup() {
