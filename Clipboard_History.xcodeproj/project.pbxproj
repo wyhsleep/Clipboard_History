@@ -15,6 +15,8 @@
 		D9CBC21B29E98BFD00D30A28 /* Clipboard_HistoryUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9CBC21A29E98BFD00D30A28 /* Clipboard_HistoryUITests.swift */; };
 		D9CBC21D29E98BFD00D30A28 /* Clipboard_HistoryUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9CBC21C29E98BFD00D30A28 /* Clipboard_HistoryUITestsLaunchTests.swift */; };
 		D9EE90E729EA3277005A9182 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EE90E629EA3277005A9182 /* SettingsView.swift */; };
+		D9EE90F829EBE7CF005A9182 /* CustomAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EE90F729EBE7CF005A9182 /* CustomAppDelegate.swift */; };
+		D9EE90FA29EBEBFE005A9182 /* MainWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EE90F929EBEBFE005A9182 /* MainWindowController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -47,6 +49,9 @@
 		D9CBC21A29E98BFD00D30A28 /* Clipboard_HistoryUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Clipboard_HistoryUITests.swift; sourceTree = "<group>"; };
 		D9CBC21C29E98BFD00D30A28 /* Clipboard_HistoryUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Clipboard_HistoryUITestsLaunchTests.swift; sourceTree = "<group>"; };
 		D9EE90E629EA3277005A9182 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		D9EE90F429EBE386005A9182 /* Clipboard-History-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Clipboard-History-Info.plist"; sourceTree = SOURCE_ROOT; };
+		D9EE90F729EBE7CF005A9182 /* CustomAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomAppDelegate.swift; sourceTree = "<group>"; };
+		D9EE90F929EBEBFE005A9182 /* MainWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -97,8 +102,11 @@
 		D9CBC1FD29E98BFC00D30A28 /* Clipboard_History */ = {
 			isa = PBXGroup;
 			children = (
+				D9EE90F429EBE386005A9182 /* Clipboard-History-Info.plist */,
 				D9EE90E629EA3277005A9182 /* SettingsView.swift */,
 				D9CBC1FE29E98BFC00D30A28 /* Clipboard_HistoryApp.swift */,
+				D9EE90F729EBE7CF005A9182 /* CustomAppDelegate.swift */,
+				D9EE90F929EBEBFE005A9182 /* MainWindowController.swift */,
 				D9CBC20029E98BFC00D30A28 /* ContentView.swift */,
 				D9CBC20229E98BFD00D30A28 /* Assets.xcassets */,
 				D9CBC20729E98BFD00D30A28 /* Clipboard_History.entitlements */,
@@ -263,8 +271,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				D9EE90E729EA3277005A9182 /* SettingsView.swift in Sources */,
+				D9EE90F829EBE7CF005A9182 /* CustomAppDelegate.swift in Sources */,
 				D9CBC20129E98BFC00D30A28 /* ContentView.swift in Sources */,
 				D9CBC1FF29E98BFC00D30A28 /* Clipboard_HistoryApp.swift in Sources */,
+				D9EE90FA29EBEBFE005A9182 /* MainWindowController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -429,8 +439,8 @@
 				DEVELOPMENT_TEAM = NRR8H2C5ZA;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_FILE = "Clipboard-History-Info.plist";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2023 WangYihui. All rights reserved";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -459,8 +469,8 @@
 				DEVELOPMENT_TEAM = NRR8H2C5ZA;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_FILE = "Clipboard-History-Info.plist";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2023 WangYihui. All rights reserved";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",

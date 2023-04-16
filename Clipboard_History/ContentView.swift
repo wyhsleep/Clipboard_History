@@ -38,6 +38,7 @@ class ClipboardHistoryManager: ObservableObject {
     // Store the clipboard history data
     @AppStorage("clipboardHistory") private var clipboardHistoryData: Data = Data()
     // Publish the clipboard history
+    @Published var skipNextUpdate: Bool = false
     @Published var clipboardHistory: [ClipboardItem] {
         didSet {
             if let encoded = try? JSONEncoder().encode(clipboardHistory) {
@@ -151,6 +152,15 @@ struct ContentView: View {
     @State private var searchText = ""
     @State private var scrollViewProxy: ScrollViewProxy? = nil
     @State private var selectedItem: ClipboardItem? = nil
+    @State private var monitoringTimer: Timer? = nil
+    @State private var appIsUpdatingClipboard: Bool = false
+    @State private var lastPastedItemId: UUID?
+    @State private var selectedDate = Date()
+    @State private var currentDate: Date = Date()
+    @State private var hasHistoryForCurrentDate = true
+    @State private var searchResults: [ClipboardItem] = []
+
+    
     @Environment(\.colorScheme) private var colorScheme
 
     private func filteredItems() -> [ClipboardItem] {
@@ -162,6 +172,17 @@ struct ContentView: View {
             }
         }
     }
+
+    func pasteToClipboard(text: String, itemId: UUID) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.declareTypes([.string], owner: nil)
+        pasteboard.setString(text, forType: .string)
+
+        // Set the last pasted item ID and save it to UserDefaults
+        lastPastedItemId = itemId
+        UserDefaults.standard.set(itemId.uuidString, forKey: "lastPastedItemId")
+    }
+
 
     // Group clipboard items by date
     private var groupedClipboardItems: [String: [ClipboardItem]] {
@@ -182,6 +203,34 @@ struct ContentView: View {
         return groupedItems
     }
     
+    func getDateSeparatedItems(clipboardHistory: [ClipboardItem]) -> [String: [ClipboardItem]] {
+        var dateSeparatedItems: [String: [ClipboardItem]] = [:]
+
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy.MMM.dd"
+
+        for item in clipboardHistory {
+            let formattedDate = dateFormatter.string(from: item.timestamp)
+
+            if dateSeparatedItems[formattedDate] == nil {
+                dateSeparatedItems[formattedDate] = [item]
+            } else {
+                dateSeparatedItems[formattedDate]?.append(item)
+            }
+        }
+        return dateSeparatedItems
+    }
+    
+    func updateSearchResults() {
+        if searchText.isEmpty {
+            searchResults = []
+        } else {
+            let matchedItems = clipboardHistoryManager.clipboardHistory.filter { $0.text.lowercased().contains(searchText.lowercased()) }
+            searchResults = Array(matchedItems.prefix(2))
+        }
+    }
+
+    
     var colors: CustomColors {
         return colorScheme == .dark ? darkColors : lightColors
     }
@@ -198,7 +247,74 @@ struct ContentView: View {
             ScrollViewReader { proxy in
                 // List to display the grouped clipboard items
                 List {
-                    
+                    // Display search results
+                    if !searchResults.isEmpty {
+                        Section(header: Text("Search Results")
+                                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                                    .padding(.top)) {
+                            ForEach(searchResults, id: \.id) { item in
+                                HStack {
+                                    VStack(alignment: .leading) {
+                                        Text(item.text)
+                                            .font(.system(size: 16, weight: .regular, design:.rounded))
+                                            .lineLimit(item.folded ? 2 : nil)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                            .foregroundColor(Color(hex: colors.text))
+
+                                        // Display the timestamp of the clipboard item
+                                        Text(item.timestamp, style: .time)
+                                            .font(.system(size: 12, weight: .light, design: .rounded))
+                                            .foregroundColor(.gray)
+                                        Text(currentDate.formattedDateString())
+                                            .font(.system(size: 12, weight: .light, design: .rounded))
+                                            .foregroundColor(.gray)
+
+                                        // Show More/Show Less button for long text
+                                        if item.text.count > 100 {
+                                            Button(action: {
+                                                clipboardHistoryManager.toggleFolded(item: item)
+                                            }) {
+                                                Text(item.folded ? "Show More" : "Show Less")
+                                                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                                                    .foregroundColor(.blue)
+                                            }
+                                        }
+                                    }
+                                    .gesture(TapGesture().onEnded { _ in
+                                        selectedItem = item
+                                    })
+
+                                    Spacer()
+                                    // Paste button for the clipboard item
+                                    Button(action: {
+                                        pasteToClipboard(text: item.text, itemId: item.id)
+                                    }) {
+                                        Image(systemName: "doc.on.doc")
+                                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                                            .foregroundColor(Color(hex: colors.accent))
+                                    }
+                                    .padding(.trailing, 8)
+                                    // Delete button for the clipboard item
+                                    Button(action: {
+                                        if let index = clipboardHistoryManager.clipboardHistory.firstIndex(where: { $0.id == item.id }) {
+                                            clipboardHistoryManager.clipboardHistory.remove(at: index)
+                                        }
+                                    }) {
+                                        Image(systemName: "trash")
+                                            .font(.system(size: 12, weight: .regular, design: .rounded))
+                                            .foregroundColor(.red)
+                                    }
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                                .padding()
+                                .background(RoundedRectangle(cornerRadius: 10).fill(Color(hex: colors.background)))
+                                .padding(.vertical, 4)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                    }
+
+                    // Display selectedItem
                     if let selectedItem = selectedItem {
                         HStack {
                             VStack(alignment: .leading) {
@@ -232,136 +348,168 @@ struct ContentView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     
-                    ForEach(groupedClipboardItems.keys.sorted(by: >), id: \.self) { dateString in
-                        VStack(alignment: .center) {
-                            HStack {
-                                Spacer()
-                                Text("----------\(dateString)----------")
-                                    .font(.system(.headline, design: .monospaced))
-                                                .padding(.horizontal, 0)
-                                                .background(GeometryReader { geometry in
-                                                    Color.clear
-                                                        .preference(key: SeparatorWidthPreferenceKey.self, value: geometry.size.width)
-                                                })
-                                            Spacer()
-                            }
-                            .padding(.vertical, 4)
-                            .onPreferenceChange(SeparatorWidthPreferenceKey.self) {separatorWidth in
-                            }
-                            ForEach(groupedClipboardItems[dateString]!, id: \.id) { item in
-                                VStack(alignment: .leading) {
-                                    // Your existing Text views for content and timestamp
-                                }
-                                //.padding(.vertical, 4)
-                            }
+                    HStack {
+                        Button(action: {
+                            moveDateForward()
+                        }) {
+                            Image(systemName: "arrow.left")
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
                         }
+                        .padding(.top, 10)
+                        .disabled(Calendar.current.isDateInToday(currentDate) || currentDate > Date())
+                        
+                        Spacer()
+                        Text("---------\(currentDate.formattedDateString())-----------")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .padding(.top, 10)
+                        Spacer()
+                        
+                        // Right arrow button
+                        Button(action: {
+                            moveDateBackward()
+                        }){
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                        }
+                        .padding(.top, 10)
+                        
                     }
                     
-                    // List the clipboard items individually
-                    ForEach(filteredItems(), id: \.id) { item in
-                                            HStack {
-                                                VStack(alignment: .leading) {
-                                                    Text(item.text)
-                                                        .font(.system(size: 16, weight: .regular, design:.rounded))
-                                                        .lineLimit(item.folded ? 2 : nil)
-                                                        .fixedSize(horizontal: false, vertical: true)
-                                                        .foregroundColor(Color(hex: colors.text))
-
-                                                    // Display the timestamp of the clipboard item
-                                                    Text(item.timestamp, style: .time)
-                                                        .font(.system(size: 12, weight: .light, design: .rounded))
-                                                        .foregroundColor(.gray)
-
-                                                    // Show More/Show Less button for long text
-                                                    if item.text.count > 100 {
-                                                        Button(action: {
-                                                            clipboardHistoryManager.toggleFolded(item: item)
-                                                        }) {
-                                                            Text(item.folded ? "Show More" : "Show Less")
-                                                                .font(.system(size: 12, weight: .regular, design: .rounded))
-                                                                .foregroundColor(.blue)
-                                                        }
-                                                    }
-                                                }
-                                                .gesture(TapGesture().onEnded { _ in
-                                                    selectedItem = item
-                                                })
-
-                                                Spacer()
-
-                                                // Delete button for the clipboard item
-                                                Button(action: {
-                                                    if let index = clipboardHistoryManager.clipboardHistory.firstIndex(where: { $0.id == item.id }) {
-                                                        clipboardHistoryManager.clipboardHistory.remove(at: index)
-                                                    }
-                                                }) {
-                                                    Image(systemName: "trash")
-                                                        .font(.system(size: 12, weight: .regular, design: .rounded))
-                                                        .foregroundColor(.red)
-                                                }
-                                            }
-                                            .buttonStyle(PlainButtonStyle())
-                                            .padding()
-                                            .background(RoundedRectangle(cornerRadius: 10).fill(Color(hex: colors.background)))
-                                            .padding(.vertical, 4)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
+                    let itemsForCurrentDate = clipboardHistoryManager.clipboardHistory.filter { $0.timestamp.formattedDateString() == currentDate.formattedDateString() }
+                    
+                    if itemsForCurrentDate.isEmpty {
+                        Text("No history")
+                            .font(.system(size: 16, weight: .regular, design:.rounded))
+                            .foregroundColor(Color(hex: colors.text))
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    else {
+                        ForEach(itemsForCurrentDate, id: \.id){ item in
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(item.text)
+                                        .font(.system(size: 16, weight: .regular, design:.rounded))
+                                        .lineLimit(item.folded ? 2 : nil)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .foregroundColor(Color(hex: colors.text))
+                                    
+                                    // Display the timestamp of the clipboard item
+                                    Text(item.timestamp, style: .time)
+                                        .font(.system(size: 12, weight: .light, design: .rounded))
+                                        .foregroundColor(.gray)
+                                    
+                                    // Show More/Show Less button for long text
+                                    if item.text.count > 100 {
+                                        Button(action: {
+                                            clipboardHistoryManager.toggleFolded(item: item)
+                                        }) {
+                                            Text(item.folded ? "Show More" : "Show Less")
+                                                .font(.system(size: 12, weight: .regular, design: .rounded))
+                                                .foregroundColor(.blue)
                                         }
-                                    }
-                                    .onAppear {
-                                        scrollViewProxy = proxy
                                     }
                                 }
-
-                                // Scroll to top button
-                                ZStack(alignment: .bottom){
-                                    VStack {
-                                        HStack {
-                                            SearchBar(text: $searchText)
-                                                .padding(.leading)
-                                                .frame(width: 250, alignment: .leading)
-                                                            
-                                            Spacer()
-                                            
-                                            Button(action: {
-                                                if let latestItemId = clipboardHistoryManager.clipboardHistory.first?.id {
-                                                    scrollViewProxy?.scrollTo(latestItemId, anchor: .top)
-                                                }
-                                            }) {
-                                                Image(systemName: "chevron.up.circle")
-                                                    .resizable()
-                                                    .frame(width: 24, height: 24)
-                                                    .foregroundColor(.blue)
-                                            }
-                                            .buttonStyle(PlainButtonStyle())
-                                            .padding()
-                                            .background(Color.white.opacity(0.0))
-                                            .clipShape(Circle())
-                                            .padding(.trailing)
-                                        }
+                                .gesture(TapGesture().onEnded { _ in
+                                    selectedItem = item
+                                })
+                                
+                                Spacer()
+                                // Paste button for the clipboard item
+                                Button(action: {
+                                    pasteToClipboard(text: item.text, itemId: item.id)
+                                }) {
+                                    Image(systemName: "doc.on.doc")
+                                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                                        .foregroundColor(Color(hex: colors.accent))
+                                }
+                                .padding(.trailing, 8)
+                                // Delete button for the clipboard item
+                                Button(action: {
+                                    if let index = clipboardHistoryManager.clipboardHistory.firstIndex(where: { $0.id == item.id }) {
+                                        clipboardHistoryManager.clipboardHistory.remove(at: index)
                                     }
+                                }) {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 12, weight: .regular, design: .rounded))
+                                        .foregroundColor(.red)
                                 }
                             }
-                        .onAppear(perform: setup)
+                            .buttonStyle(PlainButtonStyle())
+                            .padding()
+                            .background(RoundedRectangle(cornerRadius: 10).fill(Color(hex: colors.background)))
+                            .padding(.vertical, 4)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
+                    }
+                }
+
+
+                HStack {
+                    SearchBar(text: $searchText)
+                        .onChange(of: searchText, perform: { _ in
+                            updateSearchResults()
+                        })
+
+                    .padding(.leading)
+                    .frame(width: 250, alignment: .leading)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        if let latestItemId = clipboardHistoryManager.clipboardHistory.first?.id {
+                            scrollViewProxy?.scrollTo(latestItemId, anchor: .top)
+                        }
+                    }) {
+                        Image(systemName: "chevron.up.circle")
+                            .resizable()
+                            .frame(width: 24, height: 24)
+                            .foregroundColor(.blue)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .padding()
+                    .background(Color.white.opacity(0.0))
+                    .clipShape(Circle())
+                    .padding(.trailing)
+                }
+                .padding(.bottom)
+                .onAppear {
+                    scrollViewProxy = proxy
+                }
+            }
+        }
+        .onAppear {
+            setup()
+            //loadDataForCurrentDate()
+        }
+    }
     // Set up clipboard monitoring and update clipboard history
+    func moveDateForward() {
+        currentDate = Calendar.current.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
+    }
+
+    func moveDateBackward() {
+        currentDate = Calendar.current.date(byAdding: .day, value: -1, to: currentDate) ?? currentDate
+    }
+    
     func setup() {
         let pasteboard = NSPasteboard.general
         var changeCount = pasteboard.changeCount
 
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+        monitoringTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             if pasteboard.changeCount != changeCount {
-                changeCount = pasteboard.changeCount
+                        changeCount = pasteboard.changeCount
 
-                if let copiedString = pasteboard.string(forType: .string) {
-                    var updatedHistory = clipboardHistoryManager.clipboardHistory
-
-                    let newItem = ClipboardItem(text: copiedString, timestamp: Date(), folded: true)
-                    updatedHistory.insert(newItem, at: 0)
-                    clipboardHistoryManager.clipboardHistory = updatedHistory
+                        if !appIsUpdatingClipboard, let copiedString = pasteboard.string(forType: .string) {
+                            if clipboardHistoryManager.skipNextUpdate {
+                                clipboardHistoryManager.skipNextUpdate = false
+                            } else {
+                                let newItem = ClipboardItem(text: copiedString, timestamp: Date(), folded: true)
+                                clipboardHistoryManager.clipboardHistory.insert(newItem, at: 0)
+                            }
+                        }
+                    }
                 }
             }
-        }
-    }
 }
 
 // Preview for ContentView
@@ -371,3 +519,10 @@ struct ContentView_Previews: PreviewProvider {
     }
 }
 
+extension Date {
+    func formattedDateString() -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy.MM.dd"
+        return dateFormatter.string(from: self)
+    }
+}
