@@ -244,6 +244,32 @@ struct ContentView: View {
                 .fontWeight(.bold)
                 .foregroundColor(Color(hex: colors.accent))
                 .padding(.top, 32)
+            HStack {
+                Button(action: {
+                    moveDateForward()
+                }) {
+                    Image(systemName: "arrow.left")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                }
+                .padding(.top, 10)
+                .disabled(Calendar.current.isDateInToday(currentDate) || currentDate > Date())
+                
+                Spacer()
+                Text("---------\(currentDate.formattedDateString())-----------")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .padding(.top, 10)
+                Spacer()
+                
+                // Right arrow button
+                Button(action: {
+                    moveDateBackward()
+                }){
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                }
+                .padding(.top, 10)
+                
+            }
             ScrollViewReader { proxy in
                 // List to display the grouped clipboard items
                 List {
@@ -346,33 +372,6 @@ struct ContentView: View {
                         .background(RoundedRectangle(cornerRadius: 10).fill(Color.green))
                         .padding(.vertical, 4)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    
-                    HStack {
-                        Button(action: {
-                            moveDateForward()
-                        }) {
-                            Image(systemName: "arrow.left")
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                        }
-                        .padding(.top, 10)
-                        .disabled(Calendar.current.isDateInToday(currentDate) || currentDate > Date())
-                        
-                        Spacer()
-                        Text("---------\(currentDate.formattedDateString())-----------")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .padding(.top, 10)
-                        Spacer()
-                        
-                        // Right arrow button
-                        Button(action: {
-                            moveDateBackward()
-                        }){
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                        }
-                        .padding(.top, 10)
-                        
                     }
                     
                     let itemsForCurrentDate = clipboardHistoryManager.clipboardHistory.filter { $0.timestamp.formattedDateString() == currentDate.formattedDateString() }
